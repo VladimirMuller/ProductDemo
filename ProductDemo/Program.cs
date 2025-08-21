@@ -11,6 +11,15 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddMvc();
 builder.Services.AddControllersWithViews();
 
+builder.Services.AddCors(option =>
+{
+    option.AddPolicy("AllowClientJSApp",
+            policy => policy.WithOrigins("http://localhost:5173") // TS/JS/React/Angular/VUE app URL
+                .AllowAnyMethod()
+                .AllowAnyHeader()
+                .AllowCredentials()
+        );
+});
 
 builder.Services.AddDbContextFactory<ApplicationDbContext>(
        //options => options.UseSqlServer(
@@ -23,6 +32,8 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+
+
 // Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
@@ -32,6 +43,7 @@ if (!app.Environment.IsDevelopment())
 }
 else
 {
+    app.UseDeveloperExceptionPage();
     app.UseSwagger();
     app.UseSwaggerUI();
 }
@@ -40,7 +52,8 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
-
+app.UseCors("AllowClientJSApp");
+//app.UseAuthentication();
 //app.UseAuthorization();
 
 app.MapControllerRoute(

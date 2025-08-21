@@ -25,11 +25,11 @@ public class ProductControllerIntegrationTest
         var applicationDbContext = new ApplicationDbContext(contextOptions);
 
         IProductRepository repository = new ProductRepository(applicationDbContext);
-        ProductController controller = new ProductController(repository);
+        ProductController controller = new(repository);
 
         Assert.Equal(0, applicationDbContext.Products.Count());
 
-        ProductDto productDto = new ProductDto() { Name = "name1", Description = "desc1" };
+        ProductDto productDto = new() { Name = "name1", Description = "desc1" };
 
         // create
         var createdResult = controller.Create(productDto) as ObjectResult;
@@ -48,7 +48,7 @@ public class ProductControllerIntegrationTest
         Assert.NotNull(getAllResult);
         Assert.Equal((int)HttpStatusCode.OK, getAllResult.StatusCode);
         var listGetAllResult = Assert.IsAssignableFrom<List<Product>>(getAllResult.Value);
-        List<Product> expectedProducts = new Product[] { createdProductResult }.ToList();
+        List<Product> expectedProducts = [createdProductResult];
         Assert.Equal(expectedProducts.ToJson().ToString(), listGetAllResult.ToJson().ToString());
 
         Assert.Equal(1, applicationDbContext.Products.Count());
@@ -66,7 +66,7 @@ public class ProductControllerIntegrationTest
 
 
         // update
-        Product productToUpdate = new Product() { Id = createdProductResult.Id, Name = "new name1", Description = "new description1" };
+        Product productToUpdate = new() { Id = createdProductResult.Id, Name = "new name1", Description = "new description1" };
         var updatedResult = controller.Update(createdProductResult.Id, productToUpdate) as ObjectResult;
         Assert.NotNull(updatedResult);
         Assert.Equal((int)HttpStatusCode.OK, updatedResult.StatusCode);

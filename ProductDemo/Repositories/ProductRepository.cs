@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
-using ProcuctDemo;
+using ProductDemo;
 using ProductDemo.Dto;
 using ProductDemo.Models;
 using System;
@@ -36,7 +36,12 @@ namespace ProductDemo.Repositories
         public IQueryable<Product> Get()
         {
             var products = from p in applicationDbContext.Products
-                           select new Product() { Id = p.Id, Name = p.Name, Description = p.Description };
+                           select new Product() 
+                           { 
+                               Id = p.Id, 
+                               Name = p.Name, 
+                               Description = p.Description 
+                           };
             return products;
         }
 
@@ -44,7 +49,13 @@ namespace ProductDemo.Repositories
 
         public Product Add(ProductDto item)
         {
-            var result = applicationDbContext.Products.Add(new Product() { Name = item.Name, Description = item.Description });
+            var result = applicationDbContext.Products.Add(
+                new Product() 
+                { 
+                    Name = item.Name, 
+                    Description = item.Description 
+                });
+
             applicationDbContext.SaveChanges();
             return result.Entity;
         }
@@ -62,14 +73,12 @@ namespace ProductDemo.Repositories
 
         public Product? Update(Product item)
         {
-            if (item == null)
-                throw new ArgumentNullException(nameof(item));
+            ArgumentNullException.ThrowIfNull(nameof(item));
 
             Product? result = Get(item.Id);
 
             if (result != null)
             {
-
                 result.Name = item.Name;
                 result.Description = item.Description;
 

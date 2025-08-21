@@ -6,7 +6,8 @@ namespace ProductDemo.Models
 {
     public class Product : ProductDto
     {
-        [Key] public int Id { get; set; }
+        [Key] 
+        public int Id { get; set; }
 
         public Product(int id, ProductDto dto) : base(dto)
         {

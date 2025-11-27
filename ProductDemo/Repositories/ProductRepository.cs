@@ -2,7 +2,6 @@
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.EntityFrameworkCore;
 using ProductDemo;
-using ProductDemo.Dto;
 using ProductDemo.Models;
 using System;
 using System.Collections.Generic;
@@ -11,16 +10,18 @@ using System.Threading.Tasks;
 
 namespace ProductDemo.Repositories
 {
-    public interface IProductRepository
+    public interface IProductRepository : IRepository<Product>
     {
-        IQueryable<Product> Get();
-        Product? Get(int id);
-        Product Add(ProductDto item);
-        Product? Update(Product item);
-        Product? Delete(int id);
     }
 
+    public class ProductRepository : RepositortyBase<Product>, IProductRepository
+    {
+        public ProductRepository(ApplicationDbContext context) : base(context)
+        {
+        }
+    }
 
+    /*
     /// <summary>
     /// Repository for product entities
     /// </summary>
@@ -88,6 +89,5 @@ namespace ProductDemo.Repositories
 
             return result;
         }
-
-    }
+    }*/
 }

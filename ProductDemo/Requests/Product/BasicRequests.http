@@ -1,0 +1,44 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+@host=https://localhost:44380
+
+# Get all products
+GET {{host}}/api/products
+
+###
+
+# Get one procuct by index id
+GET {{host}}/api/products/1
+
+###
+
+# Create one product
+POST {{host}}/api/products
+Accept: */*
+Content-Type: application/json
+
+{
+  "name": "test1",
+  "description": "desc1"
+}
+
+###
+
+# Update one product on index id
+ PUT {{host}}/api/products/2
+ Accept: */*
+ Content-Type: application/json
+ 
+ { 
+   "name": "new name", 
+   "description": "new description", 
+   "id": 2
+ }
+
+ 
+###
+
+# Delete one product with index id
+DELETE {{host}}/api/products/1 
+Accept: */*
+
+###

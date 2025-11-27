@@ -1,10 +1,11 @@
 ﻿using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
-using ProductDemo.Dto;
 using ProductDemo.Models;
 using ProductDemo.Repositories;
 using System.Collections;
+using System.Security.Permissions;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace ProductDemo.Controllers
@@ -14,6 +15,22 @@ namespace ProductDemo.Controllers
     public class ProductController : ControllerBase
     {
         private readonly IProductRepository repository;
+
+        public sealed record ProductDtoResponse(int Id, string Name, string? Description) 
+        {
+            public ProductDtoResponse(Product product) : this(product.Id, product.Name, product.Description) { }
+        }
+
+        public sealed record ProductDtoCreateRequest(string Name, string? Description)
+        {
+            public Product ToEntity() => new Product { Name = Name, Description = Description };
+        }
+
+        public sealed record ProductDtoUpdateRequest(int Id, string Name, string? Description)
+        {
+            public Product ToEntity() => new Product { Id = Id, Name = Name, Description = Description };
+        }
+
 
         public ProductController(IProductRepository repository)
         {
@@ -26,11 +43,15 @@ namespace ProductDemo.Controllers
         /// </summary>
         /// <returns></returns>
         [HttpGet]
-        public IActionResult GetAll()
+        [ProducesResponseType(typeof(IEnumerable<ProductDtoResponse>), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> GetAll(CancellationToken cancellationToken = default)
         {
             try
             {
-                return Ok(repository.Get().ToList());
+                var products = await repository.GetAllAsync(cancellationToken);
+                var productDtos = products.Select(p => new ProductDtoResponse(p)).ToList();
+                return Ok(productDtos);
             }
             catch (Exception)
             {
@@ -46,15 +67,18 @@ namespace ProductDemo.Controllers
         /// <param name="id"></param>
         /// <returns></returns>
         [HttpGet("{id:int}")]
-        public IActionResult Get(int id)
+        [ProducesResponseType(typeof(ProductDtoResponse), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Get(int id)
         {
             try
             {
-                var result = repository.Get(id);
-                if (result == null) 
+                var result = await repository.GetAsync(id);
+                if (result is null) 
                     return NotFound($"Product with Id = {id} not found");
                 else
-                    return Ok(result);
+                    return Ok(new ProductDtoResponse(result));
             }
             catch (Exception)
             {
@@ -71,23 +95,30 @@ namespace ProductDemo.Controllers
         /// <returns></returns>
         [HttpPost]
         //[ValidateAntiForgeryToken]
-        public IActionResult Create([FromBody] ProductDto product)
+        [ProducesResponseType(typeof(ProductDtoResponse), StatusCodes.Status201Created)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Create([FromBody] ProductDtoCreateRequest productDto)
         {
             try
             {
-                if (product == null)
+                if (productDto == null)
                     return BadRequest();
 
                 if (!ModelState.IsValid)
                     return BadRequest("Invalid model object");
 
-                product.Name = HttpUtility.HtmlEncode(product.Name);
-                product.Description = HttpUtility.HtmlEncode(product.Description);
+                var productToAdd = productDto.ToEntity();
 
-                var createdProduct = repository.Add(product);
+                productToAdd.Name = HttpUtility.HtmlEncode(productToAdd.Name);
+                productToAdd.Description = HttpUtility.HtmlEncode(productToAdd.Description);
 
-                return CreatedAtAction(nameof(Get),
-                    new { Id = createdProduct.Id }, createdProduct);
+                await repository.AddAsync(productToAdd);
+
+                return CreatedAtAction(
+                    actionName: nameof(Get),
+                    routeValues: new { Id = productToAdd.Id },
+                    value: new ProductDtoResponse(productToAdd));
             }
             catch (Exception)
             {
@@ -105,25 +136,31 @@ namespace ProductDemo.Controllers
         /// <returns></returns>
         [HttpPut("{id:int}")]
         //[ValidateAntiForgeryToken]
-        public IActionResult Update(int id, [FromBody] Product product)
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status400BadRequest)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Update(int id, [FromBody] ProductDtoUpdateRequest productDto)
         {
             try
             {
-                if (id != product.Id)
-                    return BadRequest("Product ID mismatch");
+                //if (id != product.Id)
+                //    return BadRequest("Product ID mismatch");
 
                 if (!ModelState.IsValid)
                     return BadRequest("Invalid model object");
 
-                product.Name = HttpUtility.HtmlEncode(product.Name);
-                product.Description = HttpUtility.HtmlEncode(product.Description);
+                var productToUpdate = await repository.GetAsync(id);
 
-                var productToUpdate = repository.Get(id);
-
-                if (productToUpdate == null)
+                if (productToUpdate is null)
                     return NotFound($"Product with Id = {id} not found");
 
-                return Ok(repository.Update(product));
+                //productToUpdate = productDto.ToEntity();
+                productToUpdate.Name = HttpUtility.HtmlEncode(productDto.Name);
+                productToUpdate.Description = HttpUtility.HtmlEncode(productDto.Description);
+
+                await repository.UpdateAsync(productToUpdate);
+                return Ok();
             }
             catch (Exception)
             {
@@ -140,17 +177,21 @@ namespace ProductDemo.Controllers
         /// <returns></returns>
         [HttpDelete("{id:int}")]
         //[ValidateAntiForgeryToken]
-        public IActionResult Delete(int id)
+        [ProducesResponseType(typeof(string), StatusCodes.Status200OK)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status404NotFound)]
+        [ProducesResponseType(typeof(string), StatusCodes.Status500InternalServerError)]
+        public async Task<IActionResult> Delete(int id)
         {
             try
             {
-                var productToDelete = repository.Get(id);
+                var productToDelete = await repository.GetAsync(id);
 
-                if (productToDelete == null)
+                if (productToDelete is null)
                 {
                     return NotFound($"Product with Id = {id} not found");
                 }
-                return Ok(repository.Delete(id));
+                await repository.DeleteAsync(id);
+                return Ok();
             }
             catch (Exception)
             {
